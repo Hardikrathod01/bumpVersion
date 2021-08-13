@@ -1,0 +1,59 @@
+def buildName(env) {
+    // for instance: "QA6.Master_Pipe.v6.6.0.30302
+    return env.toUpperCase() + "." + getBuildJobName() + ".v" + android.defaultConfig.versionName + "." + getJenkinsBuildNumber()
+}
+
+// Manifest version information
+// You must also add versions to abcVersion.kt
+def versionMajor = 8  // Must be less than 100
+def versionMinor = 10  // Must be less than 100
+def versionPatch = 0  // Must be less than 100
+
+/**
+ * Generates a simple text file containing the pretty version number.
+ */
+task generateVersionTxt()  {
+    group = "GenerateVersionTxt"
+    description = "Generates a simple text file containing the pretty version number."
+    doLast {
+        def buildNumber = getJenkinsBuildNumber()
+        def jobName = getBuildJobName()
+        new File("$projectDir/../version.txt").text = """Version: $versionMajor.$versionMinor.$versionPatch | Build: $buildNumber | Build Origin: $jobName"""
+    }
+}
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion '30.0.2'
+
+    defaultConfig {
+        applicationId "com.abc.mobile"
+        //Nougat (7.0.0) is our lowest supported OS
+        minSdkVersion 24
+        //https://issuetracker.google.com/issues/68454482: Beware of crashes using windowIsTranslucent
+
+        //Android 11 is our targeted OS
+        targetSdkVersion 30
+
+        //We have a ton of classes that push us over the limit for a single dex file so we have to
+        //enable the ability to build multiple dex files
+        multiDexEnabled true
+
+        //if this algorithm changes, it will need updated in project code as well, see abcVersion.kt
+        versionCode versionMajor * 100000 + versionMinor * 1000 + versionPatch * 10
+        //Build version name from defined variables above
+        versionName "${versionMajor}.${versionMinor}.${versionPatch}"
+        //Set version name in build config generated class for use in app
+        buildConfigField "String", "abc_VERSION", "\"$versionName\""
+
+        //This is a test runner specifically for screenshot tests but I do not think we actually use it
+        testInstrumentationRunner "com.abcairlines.mobile.abcTestRunner"
+
+        //Custom Build Parameters
+        buildConfigField "String", "overrideOrgId", "\"${getOverrideOrgId()}\""
+        buildConfigField "String", "overrideButtonId", "\"${getOverrideButtonId()}\""
+        buildConfigField "String", "overrideDeploymentId", "\"${getOverrideDeploymentId()}\""
+        buildConfigField "String", "overrideLiveAgentPod", "\"${getOverrideLiveAgentPod()}\""
+        buildConfigField "boolean", "enableVOC", getEnableVOC()
+    }
+}
